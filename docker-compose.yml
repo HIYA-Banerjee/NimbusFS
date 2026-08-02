@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  master:
+    build:
+      context: ./nimbusfs-master
+      dockerfile: Dockerfile
+    container_name: nimbusfs-master
+    ports:
+      - "9000:9000"
+    volumes:
+      - master-data:/root/.nimbusfs
+    environment:
+      - JAVA_TOOL_OPTIONS=-Dmaster.port=9000
+
+  node-1:
+    build:
+      context: ./nimbusfs-node
+      dockerfile: Dockerfile
+    container_name: nimbusfs-node-1
+    depends_on:
+      - master
+    ports:
+      - "9001:9001"
+    volumes:
+      - node1-data:/root/.nimbusfs
+    environment:
+      - JAVA_TOOL_OPTIONS=-Dmaster.host=master -Dmaster.port=9000 -Dnode.chunk.port=9001 -Dnode.host=node-1 -Dnode.display.name="Storage-Node-1"
+
+  node-2:
+    build:
+      context: ./nimbusfs-node
+      dockerfile: Dockerfile
+    container_name: nimbusfs-node-2
+    depends_on:
+      - master
+    ports:
+      - "9002:9002"
+    volumes:
+      - node2-data:/root/.nimbusfs
+    environment:
+      - JAVA_TOOL_OPTIONS=-Dmaster.host=master -Dmaster.port=9000 -Dnode.chunk.port=9002 -Dnode.host=node-2 -Dnode.display.name="Storage-Node-2"
+
+  node-3:
+    build:
+      context: ./nimbusfs-node
+      dockerfile: Dockerfile
+    container_name: nimbusfs-node-3
+    depends_on:
+      - master
+    ports:
+      - "9003:9003"
+    volumes:
+      - node3-data:/root/.nimbusfs
+    environment:
+      - JAVA_TOOL_OPTIONS=-Dmaster.host=master -Dmaster.port=9000 -Dnode.chunk.port=9003 -Dnode.host=node-3 -Dnode.display.name="Storage-Node-3"
+
+volumes:
+  master-data:
+  node1-data:
+  node2-data:
+  node3-data:
