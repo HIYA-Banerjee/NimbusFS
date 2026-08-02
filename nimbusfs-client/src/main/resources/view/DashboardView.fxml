@@ -69,9 +69,10 @@
                         <TableColumn fx:id="nameCol" text="Filename" prefWidth="250"/>
                         <TableColumn fx:id="sizeCol" text="Size" prefWidth="120"/>
                         <TableColumn fx:id="replicasCol" text="Replicas" prefWidth="100"/>
-                        <TableColumn fx:id="statusCol" text="Status" prefWidth="140"/>
-                        <TableColumn fx:id="ownerCol" text="Owner" prefWidth="140"/>
-                        <TableColumn fx:id="checksumCol" text="Checksum" prefWidth="150"/>
+                        <TableColumn fx:id="statusCol" text="Status" prefWidth="120"/>
+                        <TableColumn fx:id="ownerCol" text="Owner" prefWidth="120"/>
+                        <TableColumn fx:id="checksumCol" text="Checksum" prefWidth="130"/>
+                        <TableColumn fx:id="dateCol" text="Created At" prefWidth="160"/>
                     </columns>
                     <placeholder>
                         <VBox alignment="CENTER" spacing="12">

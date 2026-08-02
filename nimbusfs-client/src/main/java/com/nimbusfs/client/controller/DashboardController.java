@@ -39,6 +39,7 @@ public class DashboardController {
     @FXML private TableColumn<FileTableModel, String> statusCol;
     @FXML private TableColumn<FileTableModel, String> ownerCol;
     @FXML private TableColumn<FileTableModel, String> checksumCol;
+    @FXML private TableColumn<FileTableModel, String> dateCol;
     @FXML private TextField searchField;
 
     private final FileService fileService = new FileService();
@@ -60,6 +61,7 @@ public class DashboardController {
         statusCol.setCellValueFactory(cell -> cell.getValue().statusProperty());
         ownerCol.setCellValueFactory(cell -> cell.getValue().ownerProperty());
         checksumCol.setCellValueFactory(cell -> cell.getValue().checksumProperty());
+        dateCol.setCellValueFactory(cell -> cell.getValue().createdDateProperty());
 
         fileTable.setItems(fileList);
 

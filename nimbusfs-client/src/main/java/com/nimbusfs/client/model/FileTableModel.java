@@ -15,6 +15,7 @@ public class FileTableModel {
     private final StringProperty status;
     private final StringProperty owner;
     private final StringProperty checksum;
+    private final StringProperty createdDate;
     private final FileMetadata originalMetadata;
 
     public FileTableModel(FileMetadata meta) {
@@ -26,6 +27,7 @@ public class FileTableModel {
         this.status = new SimpleStringProperty(meta.getStatusLabel());
         this.owner = new SimpleStringProperty(meta.getOwnerName() != null ? meta.getOwnerName() : meta.getOwnerId());
         this.checksum = new SimpleStringProperty(meta.getShortChecksum());
+        this.createdDate = new SimpleStringProperty(com.nimbusfs.client.util.FormatUtil.formatTimestamp(meta.getCreatedAt()));
     }
 
     public StringProperty fileIdProperty() { return fileId; }
@@ -35,6 +37,7 @@ public class FileTableModel {
     public StringProperty statusProperty() { return status; }
     public StringProperty ownerProperty() { return owner; }
     public StringProperty checksumProperty() { return checksum; }
+    public StringProperty createdDateProperty() { return createdDate; }
 
     public String getFileId() { return fileId.get(); }
     public String getFileName() { return fileName.get(); }
