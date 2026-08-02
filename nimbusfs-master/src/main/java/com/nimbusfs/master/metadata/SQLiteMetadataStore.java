@@ -4,9 +4,6 @@ import com.nimbusfs.common.model.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,9 +11,8 @@ import java.util.List;
 /**
  * SQLite-backed implementation of MetadataStore.
  *
- * Uses JDBC with WAL mode for concurrent reads and a single writer.
- * All operations use PreparedStatements to prevent SQL injection.
- * Schema is created automatically on first run via DatabaseMigration.
+ * Uses WAL journal mode for concurrent reads.
+ * All writes are synchronized on the connection to prevent concurrent modification.
  */
 public class SQLiteMetadataStore implements MetadataStore {
 
@@ -32,66 +28,60 @@ public class SQLiteMetadataStore implements MetadataStore {
     // ─── Lifecycle ─────────────────────────────────────────────────────────────
 
     @Override
-    public void initialize() throws Exception {
-        // Ensure parent directories exist
-        Path parent = Paths.get(dbPath).getParent();
-        if (parent != null) Files.createDirectories(parent);
-
-        String url = "jdbc:sqlite:" + dbPath;
-        conn = DriverManager.getConnection(url);
-
-        // Performance pragmas
+    public synchronized void initialize() throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        java.io.File file = new java.io.File(dbPath);
+        if (file.getParentFile() != null && !file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+        }
+        conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
         try (Statement st = conn.createStatement()) {
             st.execute("PRAGMA journal_mode=WAL");
-            st.execute("PRAGMA synchronous=NORMAL");
-            st.execute("PRAGMA cache_size=10000");
             st.execute("PRAGMA foreign_keys=ON");
+            st.execute("PRAGMA synchronous=NORMAL");
         }
-
         DatabaseMigration.migrate(conn);
-        log.info("SQLite MetadataStore initialized at: {}", dbPath);
+        log.info("SQLiteMetadataStore initialized: {}", dbPath);
     }
 
     @Override
-    public void close() throws Exception {
+    public synchronized void close() throws Exception {
         if (conn != null && !conn.isClosed()) {
             conn.close();
-            log.info("SQLite connection closed.");
         }
     }
 
     // ─── File operations ───────────────────────────────────────────────────────
 
     @Override
-    public void saveFile(FileMetadata file) throws Exception {
+    public synchronized void saveFile(FileMetadata file) throws Exception {
         String sql = """
             INSERT OR REPLACE INTO files
-              (file_id, file_name, owner_id, size_bytes, checksum,
-               replication_factor, status, created_at, updated_at,
-               download_count, is_encrypted, is_compressed, chunk_count)
+            (file_id, file_name, owner_id, size_bytes, checksum, replication_factor, status,
+             created_at, updated_at, download_count, is_encrypted, is_compressed, chunk_count)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, file.getFileId());
-            ps.setString(2, file.getFileName());
-            ps.setString(3, file.getOwnerId());
-            ps.setLong(4,   file.getSizeBytes());
-            ps.setString(5, file.getChecksum());
-            ps.setInt(6,    file.getReplicationFactor());
-            ps.setString(7, file.getStatus().name());
-            ps.setLong(8,   file.getCreatedAt());
-            ps.setLong(9,   file.getUpdatedAt());
-            ps.setInt(10,   file.getDownloadCount());
-            ps.setInt(11,   file.isEncrypted()  ? 1 : 0);
-            ps.setInt(12,   file.isCompressed() ? 1 : 0);
-            ps.setInt(13,   file.getChunkCount());
+            ps.setString(1,  file.getFileId());
+            ps.setString(2,  file.getFileName());
+            ps.setString(3,  file.getOwnerId());
+            ps.setLong(4,    file.getSizeBytes());
+            ps.setString(5,  file.getChecksum());
+            ps.setInt(6,     file.getReplicationFactor());
+            ps.setString(7,  file.getStatus() != null ? file.getStatus().name() : FileMetadata.FileStatus.UPLOADING.name());
+            ps.setLong(8,    file.getCreatedAt());
+            ps.setLong(9,    file.getUpdatedAt());
+            ps.setInt(10,    file.getDownloadCount());
+            ps.setInt(11,    file.isEncrypted() ? 1 : 0);
+            ps.setInt(12,    file.isCompressed() ? 1 : 0);
+            ps.setInt(13,    file.getChunkCount());
             ps.executeUpdate();
         }
     }
 
     @Override
-    public FileMetadata getFile(String fileId) throws Exception {
-        String sql = "SELECT * FROM files WHERE file_id = ?";
+    public synchronized FileMetadata getFile(String fileId) throws Exception {
+        String sql = "SELECT * FROM files WHERE file_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, fileId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -101,8 +91,8 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public FileMetadata getFileByName(String fileName, String ownerId) throws Exception {
-        String sql = "SELECT * FROM files WHERE file_name = ? AND owner_id = ?";
+    public synchronized FileMetadata getFileByName(String fileName, String ownerId) throws Exception {
+        String sql = "SELECT * FROM files WHERE file_name=? AND owner_id=? LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, fileName);
             ps.setString(2, ownerId);
@@ -113,66 +103,55 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public List<FileMetadata> listFiles(String ownerId) throws Exception {
-        String sql = "SELECT * FROM files WHERE owner_id = ? AND status != 'DELETING' ORDER BY created_at DESC";
-        List<FileMetadata> files = new ArrayList<>();
+    public synchronized List<FileMetadata> listFiles(String ownerId) throws Exception {
+        String sql = "SELECT * FROM files WHERE owner_id=? AND status != 'DELETING' ORDER BY created_at DESC";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, ownerId);
             try (ResultSet rs = ps.executeQuery()) {
+                List<FileMetadata> files = new ArrayList<>();
                 while (rs.next()) files.add(mapFile(rs));
+                return files;
             }
         }
-        return files;
     }
 
     @Override
-    public List<FileMetadata> listAllFiles() throws Exception {
-        String sql = "SELECT f.*, u.username as owner_name FROM files f LEFT JOIN users u ON f.owner_id = u.user_id ORDER BY f.created_at DESC";
-        List<FileMetadata> files = new ArrayList<>();
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                FileMetadata f = mapFile(rs);
-                try { f.setOwnerName(rs.getString("owner_name")); } catch (Exception ignored) {}
-                files.add(f);
+    public synchronized List<FileMetadata> listAllFiles() throws Exception {
+        String sql = "SELECT * FROM files WHERE status != 'DELETING' ORDER BY created_at DESC";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                List<FileMetadata> files = new ArrayList<>();
+                while (rs.next()) files.add(mapFile(rs));
+                return files;
             }
         }
-        return files;
     }
 
     @Override
-    public void updateFileStatus(String fileId, FileMetadata.FileStatus status) throws Exception {
-        String sql = "UPDATE files SET status = ?, updated_at = ? WHERE file_id = ?";
+    public synchronized void updateFileStatus(String fileId, FileMetadata.FileStatus status) throws Exception {
+        String sql = "UPDATE files SET status=?, updated_at=? WHERE file_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status.name());
-            ps.setLong(2,   System.currentTimeMillis());
+            ps.setLong(2, System.currentTimeMillis());
             ps.setString(3, fileId);
             ps.executeUpdate();
         }
     }
 
     @Override
-    public void updateFileName(String fileId, String newName) throws Exception {
-        String sql = "UPDATE files SET file_name = ?, updated_at = ? WHERE file_id = ?";
+    public synchronized void updateFileName(String fileId, String newName) throws Exception {
+        String sql = "UPDATE files SET file_name=?, updated_at=? WHERE file_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newName);
-            ps.setLong(2,   System.currentTimeMillis());
+            ps.setLong(2, System.currentTimeMillis());
             ps.setString(3, fileId);
             ps.executeUpdate();
         }
     }
 
     @Override
-    public void deleteFile(String fileId) throws Exception {
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM files WHERE file_id = ?")) {
-            ps.setString(1, fileId);
-            ps.executeUpdate();
-        }
-    }
-
-    @Override
-    public void incrementDownloadCount(String fileId) throws Exception {
-        String sql = "UPDATE files SET download_count = download_count + 1 WHERE file_id = ?";
+    public synchronized void deleteFile(String fileId) throws Exception {
+        String sql = "DELETE FROM files WHERE file_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, fileId);
             ps.executeUpdate();
@@ -180,17 +159,26 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public long getTotalFilesCount() throws Exception {
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM files WHERE status != 'DELETING'")) {
+    public synchronized void incrementDownloadCount(String fileId) throws Exception {
+        String sql = "UPDATE files SET download_count = download_count + 1 WHERE file_id=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, fileId);
+            ps.executeUpdate();
+        }
+    }
+
+    @Override
+    public synchronized long getTotalFilesCount() throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM files WHERE status != 'DELETING'");
+             ResultSet rs = ps.executeQuery()) {
             return rs.next() ? rs.getLong(1) : 0;
         }
     }
 
     @Override
-    public long getTotalStorageBytes() throws Exception {
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT SUM(size_bytes) FROM files WHERE status != 'DELETING'")) {
+    public synchronized long getTotalStorageBytes() throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT SUM(size_bytes) FROM files WHERE status = 'HEALTHY'");
+             ResultSet rs = ps.executeQuery()) {
             return rs.next() ? rs.getLong(1) : 0;
         }
     }
@@ -198,22 +186,26 @@ public class SQLiteMetadataStore implements MetadataStore {
     // ─── Chunk operations ──────────────────────────────────────────────────────
 
     @Override
-    public void saveChunk(ChunkInfo chunk) throws Exception {
-        String sql = "INSERT OR REPLACE INTO chunks (chunk_id, file_id, chunk_index, size_bytes, checksum, status) VALUES (?,?,?,?,?,?)";
+    public synchronized void saveChunk(ChunkInfo chunk) throws Exception {
+        String sql = """
+            INSERT OR REPLACE INTO chunks (chunk_id, file_id, chunk_index, size_bytes, checksum, status)
+            VALUES (?,?,?,?,?,?)
+        """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, chunk.getChunkId());
             ps.setString(2, chunk.getFileId());
             ps.setInt(3,    chunk.getChunkIndex());
             ps.setLong(4,   chunk.getSizeBytes());
             ps.setString(5, chunk.getChecksum());
-            ps.setString(6, chunk.getStatus().name());
+            ps.setString(6, chunk.getStatus() != null ? chunk.getStatus().name() : ChunkInfo.ChunkStatus.PENDING.name());
             ps.executeUpdate();
         }
     }
 
     @Override
-    public ChunkInfo getChunk(String chunkId) throws Exception {
-        try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM chunks WHERE chunk_id = ?")) {
+    public synchronized ChunkInfo getChunk(String chunkId) throws Exception {
+        String sql = "SELECT * FROM chunks WHERE chunk_id=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, chunkId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? mapChunk(rs) : null;
@@ -222,33 +214,33 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public List<ChunkInfo> getChunksForFile(String fileId) throws Exception {
-        String sql = "SELECT * FROM chunks WHERE file_id = ? ORDER BY chunk_index";
-        List<ChunkInfo> chunks = new ArrayList<>();
+    public synchronized List<ChunkInfo> getChunksForFile(String fileId) throws Exception {
+        String sql = "SELECT * FROM chunks WHERE file_id=? ORDER BY chunk_index";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, fileId);
             try (ResultSet rs = ps.executeQuery()) {
+                List<ChunkInfo> chunks = new ArrayList<>();
                 while (rs.next()) chunks.add(mapChunk(rs));
+                return chunks;
             }
         }
-        return chunks;
     }
 
     @Override
-    public List<String> getChunkNodes(String chunkId) throws Exception {
-        String sql = "SELECT node_id FROM chunk_nodes WHERE chunk_id = ?";
-        List<String> nodes = new ArrayList<>();
+    public synchronized List<String> getChunkNodes(String chunkId) throws Exception {
+        String sql = "SELECT node_id FROM chunk_nodes WHERE chunk_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, chunkId);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) nodes.add(rs.getString("node_id"));
+                List<String> nodeIds = new ArrayList<>();
+                while (rs.next()) nodeIds.add(rs.getString("node_id"));
+                return nodeIds;
             }
         }
-        return nodes;
     }
 
     @Override
-    public void addChunkToNode(String chunkId, String nodeId) throws Exception {
+    public synchronized void addChunkToNode(String chunkId, String nodeId) throws Exception {
         String sql = "INSERT OR IGNORE INTO chunk_nodes (chunk_id, node_id, stored_at) VALUES (?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, chunkId);
@@ -259,8 +251,8 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public void removeChunkFromNode(String chunkId, String nodeId) throws Exception {
-        String sql = "DELETE FROM chunk_nodes WHERE chunk_id = ? AND node_id = ?";
+    public synchronized void removeChunkFromNode(String chunkId, String nodeId) throws Exception {
+        String sql = "DELETE FROM chunk_nodes WHERE chunk_id=? AND node_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, chunkId);
             ps.setString(2, nodeId);
@@ -269,36 +261,28 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public List<String> getChunksOnNode(String nodeId) throws Exception {
-        String sql = "SELECT chunk_id FROM chunk_nodes WHERE node_id = ?";
-        List<String> chunks = new ArrayList<>();
+    public synchronized List<String> getChunksOnNode(String nodeId) throws Exception {
+        String sql = "SELECT chunk_id FROM chunk_nodes WHERE node_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nodeId);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) chunks.add(rs.getString("chunk_id"));
+                List<String> chunkIds = new ArrayList<>();
+                while (rs.next()) chunkIds.add(rs.getString("chunk_id"));
+                return chunkIds;
             }
         }
-        return chunks;
     }
 
     @Override
-    public void deleteChunksForFile(String fileId) throws Exception {
-        // Remove chunk_nodes entries first (FK constraint)
-        String getChunksSql = "SELECT chunk_id FROM chunks WHERE file_id = ?";
-        List<String> chunkIds = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(getChunksSql)) {
+    public synchronized void deleteChunksForFile(String fileId) throws Exception {
+        // Remove chunk-node mappings first (FK constraint)
+        String sql1 = "DELETE FROM chunk_nodes WHERE chunk_id IN (SELECT chunk_id FROM chunks WHERE file_id=?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql1)) {
             ps.setString(1, fileId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) chunkIds.add(rs.getString("chunk_id"));
-            }
+            ps.executeUpdate();
         }
-        for (String chunkId : chunkIds) {
-            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM chunk_nodes WHERE chunk_id = ?")) {
-                ps.setString(1, chunkId);
-                ps.executeUpdate();
-            }
-        }
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM chunks WHERE file_id = ?")) {
+        String sql2 = "DELETE FROM chunks WHERE file_id=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql2)) {
             ps.setString(1, fileId);
             ps.executeUpdate();
         }
@@ -307,13 +291,17 @@ public class SQLiteMetadataStore implements MetadataStore {
     // ─── Node operations ───────────────────────────────────────────────────────
 
     @Override
-    public void saveNode(NodeInfo node) throws Exception {
-        String sql = "INSERT OR REPLACE INTO nodes (node_id, host, port, status, storage_used, storage_total, last_heartbeat, registered_at, display_name) VALUES (?,?,?,?,?,?,?,?,?)";
+    public synchronized void saveNode(NodeInfo node) throws Exception {
+        String sql = """
+            INSERT OR REPLACE INTO nodes
+            (node_id, host, port, status, storage_used, storage_total, last_heartbeat, registered_at, display_name)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, node.getNodeId());
             ps.setString(2, node.getHost());
             ps.setInt(3,    node.getPort());
-            ps.setString(4, node.getStatus().name());
+            ps.setString(4, node.getStatus() != null ? node.getStatus().name() : NodeInfo.NodeStatus.ONLINE.name());
             ps.setLong(5,   node.getStorageUsed());
             ps.setLong(6,   node.getStorageTotal());
             ps.setLong(7,   node.getLastHeartbeat());
@@ -324,8 +312,9 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public NodeInfo getNode(String nodeId) throws Exception {
-        try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM nodes WHERE node_id = ?")) {
+    public synchronized NodeInfo getNode(String nodeId) throws Exception {
+        String sql = "SELECT * FROM nodes WHERE node_id=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nodeId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? mapNode(rs) : null;
@@ -334,18 +323,20 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public List<NodeInfo> getAllNodes() throws Exception {
-        List<NodeInfo> nodes = new ArrayList<>();
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT * FROM nodes ORDER BY registered_at")) {
-            while (rs.next()) nodes.add(mapNode(rs));
+    public synchronized List<NodeInfo> getAllNodes() throws Exception {
+        String sql = "SELECT * FROM nodes ORDER BY registered_at";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                List<NodeInfo> nodes = new ArrayList<>();
+                while (rs.next()) nodes.add(mapNode(rs));
+                return nodes;
+            }
         }
-        return nodes;
     }
 
     @Override
-    public void updateNodeStatus(String nodeId, NodeInfo.NodeStatus status) throws Exception {
-        String sql = "UPDATE nodes SET status = ? WHERE node_id = ?";
+    public synchronized void updateNodeStatus(String nodeId, NodeInfo.NodeStatus status) throws Exception {
+        String sql = "UPDATE nodes SET status=? WHERE node_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status.name());
             ps.setString(2, nodeId);
@@ -354,8 +345,8 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public void updateNodeStorage(String nodeId, long used, long total) throws Exception {
-        String sql = "UPDATE nodes SET storage_used = ?, storage_total = ?, last_heartbeat = ? WHERE node_id = ?";
+    public synchronized void updateNodeStorage(String nodeId, long used, long total) throws Exception {
+        String sql = "UPDATE nodes SET storage_used=?, storage_total=?, last_heartbeat=? WHERE node_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1,   used);
             ps.setLong(2,   total);
@@ -368,13 +359,16 @@ public class SQLiteMetadataStore implements MetadataStore {
     // ─── User operations ───────────────────────────────────────────────────────
 
     @Override
-    public void saveUser(User user) throws Exception {
-        String sql = "INSERT OR REPLACE INTO users (user_id, username, password_hash, role, session_token, created_at, last_login) VALUES (?,?,?,?,?,?,?)";
+    public synchronized void saveUser(User user) throws Exception {
+        String sql = """
+            INSERT OR REPLACE INTO users (user_id, username, password_hash, role, session_token, created_at, last_login)
+            VALUES (?,?,?,?,?,?,?)
+        """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, user.getUserId());
             ps.setString(2, user.getUsername());
             ps.setString(3, user.getPasswordHash());
-            ps.setString(4, user.getRole().name());
+            ps.setString(4, user.getRole() != null ? user.getRole().name() : User.Role.USER.name());
             ps.setString(5, user.getSessionToken());
             ps.setLong(6,   user.getCreatedAt());
             ps.setLong(7,   user.getLastLogin());
@@ -383,8 +377,9 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public User getUserById(String userId) throws Exception {
-        try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE user_id = ?")) {
+    public synchronized User getUserById(String userId) throws Exception {
+        String sql = "SELECT * FROM users WHERE user_id=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? mapUser(rs) : null;
@@ -393,8 +388,9 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public User getUserByUsername(String username) throws Exception {
-        try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE username = ?")) {
+    public synchronized User getUserByUsername(String username) throws Exception {
+        String sql = "SELECT * FROM users WHERE username=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? mapUser(rs) : null;
@@ -403,8 +399,8 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public void updateSessionToken(String userId, String token, long lastLogin) throws Exception {
-        String sql = "UPDATE users SET session_token = ?, last_login = ? WHERE user_id = ?";
+    public synchronized void updateSessionToken(String userId, String token, long lastLogin) throws Exception {
+        String sql = "UPDATE users SET session_token=?, last_login=? WHERE user_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, token);
             ps.setLong(2,   lastLogin);
@@ -414,19 +410,21 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public List<User> getAllUsers() throws Exception {
-        List<User> users = new ArrayList<>();
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT * FROM users ORDER BY created_at")) {
-            while (rs.next()) users.add(mapUser(rs));
+    public synchronized List<User> getAllUsers() throws Exception {
+        String sql = "SELECT * FROM users ORDER BY created_at";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                List<User> users = new ArrayList<>();
+                while (rs.next()) users.add(mapUser(rs));
+                return users;
+            }
         }
-        return users;
     }
 
     @Override
-    public long getTotalUsersCount() throws Exception {
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM users")) {
+    public synchronized long getTotalUsersCount() throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM users");
+             ResultSet rs = ps.executeQuery()) {
             return rs.next() ? rs.getLong(1) : 0;
         }
     }
@@ -434,10 +432,13 @@ public class SQLiteMetadataStore implements MetadataStore {
     // ─── Activity log ──────────────────────────────────────────────────────────
 
     @Override
-    public void logActivity(ActivityEvent event) throws Exception {
-        String sql = "INSERT INTO activity_log (event_type, user_id, file_id, node_id, description, timestamp) VALUES (?,?,?,?,?,?)";
+    public synchronized void logActivity(ActivityEvent event) throws Exception {
+        String sql = """
+            INSERT INTO activity_log (event_type, user_id, file_id, node_id, description, timestamp)
+            VALUES (?,?,?,?,?,?)
+        """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, event.getEventType().name());
+            ps.setString(1, event.getEventType() != null ? event.getEventType().name() : "UNKNOWN");
             ps.setString(2, event.getUserId());
             ps.setString(3, event.getFileId());
             ps.setString(4, event.getNodeId());
@@ -448,46 +449,46 @@ public class SQLiteMetadataStore implements MetadataStore {
     }
 
     @Override
-    public List<ActivityEvent> getRecentActivity(int limit) throws Exception {
-        String sql = "SELECT al.*, u.username FROM activity_log al LEFT JOIN users u ON al.user_id = u.user_id ORDER BY al.timestamp DESC LIMIT ?";
-        List<ActivityEvent> events = new ArrayList<>();
+    public synchronized List<ActivityEvent> getRecentActivity(int limit) throws Exception {
+        String sql = "SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, limit);
             try (ResultSet rs = ps.executeQuery()) {
+                List<ActivityEvent> events = new ArrayList<>();
                 while (rs.next()) events.add(mapActivity(rs));
+                return events;
             }
         }
-        return events;
     }
 
     @Override
-    public List<ActivityEvent> getActivityForUser(String userId, int limit) throws Exception {
-        String sql = "SELECT al.*, u.username FROM activity_log al LEFT JOIN users u ON al.user_id = u.user_id WHERE al.user_id = ? ORDER BY al.timestamp DESC LIMIT ?";
-        List<ActivityEvent> events = new ArrayList<>();
+    public synchronized List<ActivityEvent> getActivityForUser(String userId, int limit) throws Exception {
+        String sql = "SELECT * FROM activity_log WHERE user_id=? ORDER BY timestamp DESC LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, userId);
             ps.setInt(2,    limit);
             try (ResultSet rs = ps.executeQuery()) {
+                List<ActivityEvent> events = new ArrayList<>();
                 while (rs.next()) events.add(mapActivity(rs));
+                return events;
             }
         }
-        return events;
     }
 
     @Override
-    public List<ActivityEvent> getActivityForFile(String fileId) throws Exception {
-        String sql = "SELECT al.*, u.username FROM activity_log al LEFT JOIN users u ON al.user_id = u.user_id WHERE al.file_id = ? ORDER BY al.timestamp DESC";
-        List<ActivityEvent> events = new ArrayList<>();
+    public synchronized List<ActivityEvent> getActivityForFile(String fileId) throws Exception {
+        String sql = "SELECT * FROM activity_log WHERE file_id=? ORDER BY timestamp DESC";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, fileId);
             try (ResultSet rs = ps.executeQuery()) {
+                List<ActivityEvent> events = new ArrayList<>();
                 while (rs.next()) events.add(mapActivity(rs));
+                return events;
             }
         }
-        return events;
     }
 
-    // ─── ResultSet mappers ─────────────────────────────────────────────────────
+    // ─── Row mappers ───────────────────────────────────────────────────────────
 
     private FileMetadata mapFile(ResultSet rs) throws SQLException {
         FileMetadata f = new FileMetadata();
@@ -497,13 +498,16 @@ public class SQLiteMetadataStore implements MetadataStore {
         f.setSizeBytes(rs.getLong("size_bytes"));
         f.setChecksum(rs.getString("checksum"));
         f.setReplicationFactor(rs.getInt("replication_factor"));
-        f.setStatus(FileMetadata.FileStatus.valueOf(rs.getString("status")));
         f.setCreatedAt(rs.getLong("created_at"));
         f.setUpdatedAt(rs.getLong("updated_at"));
         f.setDownloadCount(rs.getInt("download_count"));
         f.setEncrypted(rs.getInt("is_encrypted") == 1);
         f.setCompressed(rs.getInt("is_compressed") == 1);
         f.setChunkCount(rs.getInt("chunk_count"));
+        try {
+            String statusStr = rs.getString("status");
+            if (statusStr != null) f.setStatus(FileMetadata.FileStatus.valueOf(statusStr));
+        } catch (IllegalArgumentException ignored) {}
         return f;
     }
 
@@ -514,7 +518,10 @@ public class SQLiteMetadataStore implements MetadataStore {
         c.setChunkIndex(rs.getInt("chunk_index"));
         c.setSizeBytes(rs.getLong("size_bytes"));
         c.setChecksum(rs.getString("checksum"));
-        c.setStatus(ChunkInfo.ChunkStatus.valueOf(rs.getString("status")));
+        try {
+            String s = rs.getString("status");
+            if (s != null) c.setStatus(ChunkInfo.ChunkStatus.valueOf(s));
+        } catch (IllegalArgumentException ignored) {}
         return c;
     }
 
@@ -523,12 +530,15 @@ public class SQLiteMetadataStore implements MetadataStore {
         n.setNodeId(rs.getString("node_id"));
         n.setHost(rs.getString("host"));
         n.setPort(rs.getInt("port"));
-        n.setStatus(NodeInfo.NodeStatus.valueOf(rs.getString("status")));
         n.setStorageUsed(rs.getLong("storage_used"));
         n.setStorageTotal(rs.getLong("storage_total"));
         n.setLastHeartbeat(rs.getLong("last_heartbeat"));
         n.setRegisteredAt(rs.getLong("registered_at"));
         n.setDisplayName(rs.getString("display_name"));
+        try {
+            String s = rs.getString("status");
+            if (s != null) n.setStatus(NodeInfo.NodeStatus.valueOf(s));
+        } catch (IllegalArgumentException ignored) {}
         return n;
     }
 
@@ -537,23 +547,28 @@ public class SQLiteMetadataStore implements MetadataStore {
         u.setUserId(rs.getString("user_id"));
         u.setUsername(rs.getString("username"));
         u.setPasswordHash(rs.getString("password_hash"));
-        u.setRole(User.Role.valueOf(rs.getString("role")));
         u.setSessionToken(rs.getString("session_token"));
         u.setCreatedAt(rs.getLong("created_at"));
         u.setLastLogin(rs.getLong("last_login"));
+        try {
+            String s = rs.getString("role");
+            if (s != null) u.setRole(User.Role.valueOf(s));
+        } catch (IllegalArgumentException ignored) {}
         return u;
     }
 
     private ActivityEvent mapActivity(ResultSet rs) throws SQLException {
         ActivityEvent e = new ActivityEvent();
         e.setLogId(rs.getLong("log_id"));
-        e.setEventType(ActivityEvent.EventType.valueOf(rs.getString("event_type")));
         e.setUserId(rs.getString("user_id"));
         e.setFileId(rs.getString("file_id"));
         e.setNodeId(rs.getString("node_id"));
         e.setDescription(rs.getString("description"));
         e.setTimestamp(rs.getLong("timestamp"));
-        try { e.setUsername(rs.getString("username")); } catch (SQLException ignored) {}
+        try {
+            String s = rs.getString("event_type");
+            if (s != null) e.setEventType(ActivityEvent.EventType.valueOf(s));
+        } catch (IllegalArgumentException ignored) {}
         return e;
     }
 }
