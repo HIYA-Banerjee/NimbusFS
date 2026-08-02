@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="20" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.nimbusfs.client.controller.AnalyticsController" styleClass="root">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="📊 Storage & Network Analytics" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;"/>
+
+    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+        <GridPane hgap="20" vgap="20">
+            <!-- Pie Chart: Used vs Free -->
+            <VBox styleClass="card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                <Label text="Storage Used vs Free" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <PieChart fx:id="storagePieChart" prefWidth="400" prefHeight="250"/>
+            </VBox>
+
+            <!-- Line Chart: Storage Growth -->
+            <VBox styleClass="card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                <Label text="Storage Growth Over Time" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <LineChart fx:id="growthLineChart" prefWidth="400" prefHeight="250">
+                    <xAxis><CategoryAxis label="Time"/></xAxis>
+                    <yAxis><NumberAxis label="Storage (GB)"/></yAxis>
+                </LineChart>
+            </VBox>
+
+            <!-- Bar Chart: Node Utilization -->
+            <VBox styleClass="card" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                <Label text="Node Utilization" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <BarChart fx:id="nodeBarChart" prefWidth="400" prefHeight="250">
+                    <xAxis><CategoryAxis label="Node"/></xAxis>
+                    <yAxis><NumberAxis label="Usage (%)"/></yAxis>
+                </BarChart>
+            </VBox>
+
+            <!-- Area Chart: Network Traffic -->
+            <VBox styleClass="card" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                <Label text="Uploads vs Downloads Traffic" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <AreaChart fx:id="trafficAreaChart" prefWidth="400" prefHeight="250">
+                    <xAxis><CategoryAxis label="Time"/></xAxis>
+                    <yAxis><NumberAxis label="MB/s"/></yAxis>
+                </AreaChart>
+            </VBox>
+        </GridPane>
+    </ScrollPane>
+</VBox>

@@ -1,0 +1,34 @@
+# Maven target build directories
+target/
+*.jar
+*.war
+*.ear
+
+# Downloaded Maven binaries
+.mvn_bin/
+dependency-reduced-pom.xml
+
+# IDE configuration
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# Local SQLite databases & node storage
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.nimbusfs/
+data/
+storage/
+
+# Log files
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db

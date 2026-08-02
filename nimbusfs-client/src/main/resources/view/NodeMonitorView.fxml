@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="20" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.nimbusfs.client.controller.NodeMonitorController" styleClass="root">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="🟢 Storage Node Monitor" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;"/>
+        <Spacer HBox.hgrow="ALWAYS"/>
+        <Button text="🔄 Refresh Nodes" onAction="#handleRefresh" styleClass="primary-button"/>
+    </HBox>
+
+    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+        <FlowPane fx:id="nodeContainer" hgap="20" vgap="20"/>
+    </ScrollPane>
+</VBox>

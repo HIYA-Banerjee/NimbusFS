@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="15" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.nimbusfs.client.controller.NetworkGraphController" styleClass="root">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="🌐 Real-Time Network Topology Graph" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;"/>
+        <Spacer HBox.hgrow="ALWAYS"/>
+        <Label text="🔴 Offline Node | 🟢 Online Node | ⚡ Active Transfer" style="-fx-text-fill: #8b949e;"/>
+    </HBox>
+
+    <VBox styleClass="card" alignment="CENTER" VBox.vgrow="ALWAYS">
+        <Canvas fx:id="graphCanvas" width="800" height="500"/>
+    </VBox>
+</VBox>

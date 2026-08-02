@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.nimbusfs.client.controller.DashboardController" styleClass="root" prefWidth="1100" prefHeight="700">
+    <left>
+        <VBox spacing="10" styleClass="sidebar" prefWidth="220">
+            <padding>
+                <Insets top="20" right="15" bottom="20" left="15"/>
+            </padding>
+            <Label text="⚡ NimbusFS" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;"/>
+            <Separator/>
+            <Button text="📂 Files" onAction="#showFiles" maxWidth="Infinity" styleClass="sidebar-button, active"/>
+            <Button text="🟢 Node Monitor" onAction="#showNodes" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="🌐 Network Graph" onAction="#showGraph" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="📊 Analytics" onAction="#showAnalytics" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="📜 Activity Log" onAction="#showLogs" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button fx:id="adminBtn" text="👑 Admin" onAction="#showAdmin" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="⚙ Settings" onAction="#showSettings" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Spacer VBox.vgrow="ALWAYS"/>
+            <Button text="🚪 Logout" onAction="#handleLogout" maxWidth="Infinity" styleClass="danger-button"/>
+        </VBox>
+    </left>
+
+    <center>
+        <VBox spacing="20">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+
+            <!-- Header Card -->
+            <HBox spacing="30" styleClass="card" alignment="CENTER_LEFT">
+                <VBox spacing="5">
+                    <Label text="Java Distributed File System" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                    <Label fx:id="userInfoLabel" text="Logged in as: User" style="-fx-text-fill: #8b949e;"/>
+                </VBox>
+                <Spacer HBox.hgrow="ALWAYS"/>
+                <VBox alignment="CENTER" spacing="2">
+                    <Label text="Storage Used" style="-fx-text-fill: #8b949e;"/>
+                    <Label fx:id="storageUsedLabel" text="58%" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;"/>
+                </VBox>
+                <VBox alignment="CENTER" spacing="2">
+                    <Label text="Nodes Online" style="-fx-text-fill: #8b949e;"/>
+                    <Label fx:id="nodesOnlineLabel" text="4 / 5" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3fb950;"/>
+                </VBox>
+                <VBox alignment="CENTER" spacing="2">
+                    <Label text="Replication" style="-fx-text-fill: #8b949e;"/>
+                    <Label text="Healthy" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3fb950;"/>
+                </VBox>
+            </HBox>
+
+            <!-- Toolbar -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button text="⬆ Upload" onAction="#handleUpload" styleClass="primary-button"/>
+                <Button text="⬇ Download" onAction="#handleDownload" styleClass="primary-button"/>
+                <Button text="🗑 Delete" onAction="#handleDelete" styleClass="danger-button"/>
+                <Button text="✏ Rename" onAction="#handleRename" styleClass="sidebar-button"/>
+                <Button text="🔄 Refresh" onAction="#handleRefresh" styleClass="sidebar-button"/>
+                <Spacer HBox.hgrow="ALWAYS"/>
+                <TextField fx:id="searchField" promptText="🔍 Search files..." prefWidth="220"/>
+            </HBox>
+
+            <!-- File Table -->
+            <TableView fx:id="fileTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="nameCol" text="Filename" prefWidth="250"/>
+                    <TableColumn fx:id="sizeCol" text="Size" prefWidth="120"/>
+                    <TableColumn fx:id="replicasCol" text="Replicas" prefWidth="100"/>
+                    <TableColumn fx:id="statusCol" text="Status" prefWidth="140"/>
+                    <TableColumn fx:id="ownerCol" text="Owner" prefWidth="140"/>
+                    <TableColumn fx:id="checksumCol" text="Checksum" prefWidth="150"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </center>
+</BorderPane>

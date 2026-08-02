@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="15" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.nimbusfs.client.controller.UploadController" styleClass="root" prefWidth="450">
+    <padding>
+        <Insets top="25" right="25" bottom="25" left="25"/>
+    </padding>
+
+    <Label text="⬆ Upload File to NimbusFS" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;"/>
+
+    <VBox spacing="8" styleClass="card">
+        <Label text="Select File" style="-fx-font-weight: bold;"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Button text="Choose File" onAction="#handleChooseFile" styleClass="primary-button"/>
+            <Label fx:id="selectedFileLabel" text="No file selected" style="-fx-text-fill: #8b949e;"/>
+        </HBox>
+    </VBox>
+
+    <VBox spacing="10" styleClass="card">
+        <Label text="Replication Factor" style="-fx-font-weight: bold;"/>
+        <HBox spacing="20">
+            <RadioButton fx:id="rf3Radio" text="3 Copies (Default)" selected="true">
+                <toggleGroup><ToggleGroup fx:id="rfGroup"/></toggleGroup>
+            </RadioButton>
+            <RadioButton fx:id="rf2Radio" text="2 Copies" toggleGroup="$rfGroup"/>
+        </HBox>
+
+        <Separator/>
+
+        <Label text="Options" style="-fx-font-weight: bold;"/>
+        <CheckBox fx:id="encryptCheck" text="☑ Encrypt File (AES-256)" selected="true"/>
+        <CheckBox fx:id="compressCheck" text="☑ Compress File (GZip)" selected="true"/>
+    </VBox>
+
+    <VBox spacing="5" fx:id="progressContainer" visible="false">
+        <Label fx:id="progressLabel" text="Uploading..." style="-fx-text-fill: #8b949e;"/>
+        <ProgressBar fx:id="progressBar" progress="0.0" maxWidth="Infinity"/>
+    </VBox>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Cancel" onAction="#handleCancel" styleClass="sidebar-button"/>
+        <Button fx:id="uploadBtn" text="Upload" onAction="#handleStartUpload" styleClass="primary-button" disable="true"/>
+    </HBox>
+</VBox>

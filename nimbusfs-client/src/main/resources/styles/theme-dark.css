@@ -1,0 +1,133 @@
+/* NimbusFS Modern Dark Mode Theme */
+
+.root {
+    -fx-base: #121824;
+    -fx-background: #0d1117;
+    -fx-control-inner-background: #161b22;
+    -fx-text-fill: #e6edf3;
+    -fx-accent: #2f81f7;
+    -fx-font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.sidebar {
+    -fx-background-color: #161b22;
+    -fx-border-color: #30363d;
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8b949e;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 10 16 10 16;
+    -fx-cursor: hand;
+    -fx-background-radius: 6;
+}
+
+.sidebar-button:hover {
+    -fx-background-color: #21262d;
+    -fx-text-fill: #c9d1d9;
+}
+
+.sidebar-button.active {
+    -fx-background-color: #1f6feb22;
+    -fx-text-fill: #58a6ff;
+    -fx-border-color: #1f6feb;
+    -fx-border-width: 0 0 0 3;
+}
+
+.card {
+    -fx-background-color: #161b22;
+    -fx-background-radius: 10;
+    -fx-border-color: #30363d;
+    -fx-border-radius: 10;
+    -fx-padding: 16;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 4);
+}
+
+.primary-button {
+    -fx-background-color: #238636;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover {
+    -fx-background-color: #2ea043;
+}
+
+.danger-button {
+    -fx-background-color: #da3633;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+}
+
+.danger-button:hover {
+    -fx-background-color: #f85149;
+}
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: #30363d;
+    -fx-border-radius: 6;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #21262d;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8b949e;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell {
+    -fx-background-color: #161b22;
+    -fx-border-color: #21262d;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #21262d;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #1f6feb44;
+}
+
+.text-field, .password-field {
+    -fx-background-color: #0d1117;
+    -fx-text-fill: #c9d1d9;
+    -fx-border-color: #30363d;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #58a6ff;
+}
+
+.status-online {
+    -fx-text-fill: #3fb950;
+    -fx-font-weight: bold;
+}
+
+.status-offline {
+    -fx-text-fill: #f85149;
+    -fx-font-weight: bold;
+}
+
+.status-recovering {
+    -fx-text-fill: #d29922;
+    -fx-font-weight: bold;
+}

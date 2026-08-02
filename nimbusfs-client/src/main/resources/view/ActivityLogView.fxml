@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="15" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.nimbusfs.client.controller.ActivityLogController" styleClass="root">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="📜 Activity & Audit Logs" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;"/>
+        <Spacer HBox.hgrow="ALWAYS"/>
+        <Button text="🔄 Refresh Logs" onAction="#handleRefresh" styleClass="primary-button"/>
+    </HBox>
+
+    <ListView fx:id="logListView" VBox.vgrow="ALWAYS" styleClass="card"/>
+</VBox>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="20" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.nimbusfs.client.controller.LoginController" styleClass="root">
+    <padding>
+        <Insets bottom="40" left="40" right="40" top="40" />
+    </padding>
+
+    <VBox alignment="CENTER" spacing="10" styleClass="card" maxWidth="400">
+        <padding>
+            <Insets bottom="30" left="30" right="30" top="30" />
+        </padding>
+
+        <Label text="⚡ NimbusFS" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #58a6ff;" />
+        <Label text="Java Distributed File System" style="-fx-font-size: 14px; -fx-text-fill: #8b949e;" />
+
+        <Separator style="-fx-padding: 10 0 10 0;" />
+
+        <Label fx:id="statusLabel" text="" style="-fx-text-fill: #f85149;" wrapText="true" />
+
+        <VBox alignment="CENTER_LEFT" spacing="5" maxWidth="Infinity">
+            <Label text="Username" style="-fx-font-weight: bold;" />
+            <TextField fx:id="usernameField" promptText="Enter username" maxWidth="Infinity" />
+        </VBox>
+
+        <VBox alignment="CENTER_LEFT" spacing="5" maxWidth="Infinity">
+            <Label text="Password" style="-fx-font-weight: bold;" />
+            <PasswordField fx:id="passwordField" promptText="Enter password" maxWidth="Infinity" />
+        </VBox>
+
+        <Button fx:id="loginButton" text="Login" onAction="#handleLogin" maxWidth="Infinity" styleClass="primary-button">
+            <font>
+                <Font name="System Bold" size="14.0" />
+            </font>
+        </Button>
+
+        <Hyperlink text="Register New User" onAction="#handleRegister" style="-fx-text-fill: #58a6ff;" />
+    </VBox>
+</VBox>
