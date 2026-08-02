@@ -7,6 +7,7 @@ import com.nimbusfs.client.service.AuthService;
 import com.nimbusfs.client.service.FileService;
 import com.nimbusfs.client.service.NodeService;
 import com.nimbusfs.common.model.FileMetadata;
+import com.nimbusfs.common.model.UploadOptions;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -31,6 +32,7 @@ public class DashboardController {
     @FXML private Button adminBtn;
 
     @FXML private TableView<FileTableModel> fileTable;
+    @FXML private Label dropZoneLabel;
     @FXML private TableColumn<FileTableModel, String> nameCol;
     @FXML private TableColumn<FileTableModel, String> sizeCol;
     @FXML private TableColumn<FileTableModel, Integer> replicasCol;
@@ -60,6 +62,56 @@ public class DashboardController {
         checksumCol.setCellValueFactory(cell -> cell.getValue().checksumProperty());
 
         fileTable.setItems(fileList);
+
+        // ── Drag & Drop File Upload Support ────────────────────────────────
+        // Attach handlers to the fileTable so any position over it works
+        fileTable.setOnDragOver(event -> {
+            if (event.getDragboard().hasFiles()) {
+                event.acceptTransferModes(javafx.scene.input.TransferMode.COPY);
+                // Show glowing drop-zone overlay
+                if (dropZoneLabel != null) dropZoneLabel.setVisible(true);
+                fileTable.setOpacity(0.55);
+            }
+            event.consume();
+        });
+
+        fileTable.setOnDragExited(event -> {
+            // Hide overlay when cursor leaves
+            if (dropZoneLabel != null) dropZoneLabel.setVisible(false);
+            fileTable.setOpacity(1.0);
+            event.consume();
+        });
+
+        fileTable.setOnDragDropped(event -> {
+            if (dropZoneLabel != null) dropZoneLabel.setVisible(false);
+            fileTable.setOpacity(1.0);
+            javafx.scene.input.Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles()) {
+                success = true;
+                java.util.List<File> droppedFiles = db.getFiles();
+                for (File file : droppedFiles) {
+                    if (file.isFile()) {
+                        UploadOptions options = new UploadOptions(3, true, true);
+                        Platform.runLater(() -> userInfoLabel.setText("⬆ Uploading " + file.getName() + " via drag & drop..."));
+                        fileService.uploadFile(file, options, progress ->
+                            Platform.runLater(() -> userInfoLabel.setText(
+                                String.format("⬆ Uploading %s — %.0f%%", file.getName(), progress * 100)))
+                        ).thenRun(() ->
+                            Platform.runLater(() -> {
+                                userInfoLabel.setText("✅ Uploaded " + file.getName() + " successfully!");
+                                handleRefresh();
+                            })
+                        ).exceptionally(ex -> {
+                            Platform.runLater(() -> showAlert("Upload Error", ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+                            return null;
+                        });
+                    }
+                }
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
 
         handleRefresh();
     }

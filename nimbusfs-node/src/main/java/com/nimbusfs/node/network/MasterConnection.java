@@ -33,7 +33,7 @@ public class MasterConnection {
         if (socket != null && !socket.isClosed()) return;
 
         log.info("Connecting to Master at {}:{}...", config.getMasterHost(), config.getMasterPort());
-        socket = new Socket(config.getMasterHost(), config.getMasterPort());
+        socket = com.nimbusfs.common.net.NimbusSocketFactory.createClientSocket(config.getMasterHost(), config.getMasterPort(), config.isTlsEnabled());
         in  = socket.getInputStream();
         out = socket.getOutputStream();
         log.info("Connected to Master.");

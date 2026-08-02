@@ -57,4 +57,14 @@ public class SessionContext {
     public synchronized void setServerPort(int serverPort) {
         this.serverPort = serverPort;
     }
+
+    private boolean tlsEnabled = false;
+
+    public synchronized boolean isTlsEnabled() {
+        return tlsEnabled;
+    }
+
+    public synchronized void setTlsEnabled(boolean tlsEnabled) {
+        this.tlsEnabled = tlsEnabled;
+    }
 }

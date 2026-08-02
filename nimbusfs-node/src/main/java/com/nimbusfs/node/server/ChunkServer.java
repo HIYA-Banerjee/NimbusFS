@@ -33,7 +33,7 @@ public class ChunkServer {
     }
 
     public void start() throws IOException {
-        serverSocket = new ServerSocket(config.getChunkPort());
+        serverSocket = com.nimbusfs.common.net.NimbusSocketFactory.createServerSocket(config.getChunkPort(), config.isTlsEnabled());
         running.set(true);
 
         Thread acceptThread = new Thread(this::listen, "chunk-server-listen");

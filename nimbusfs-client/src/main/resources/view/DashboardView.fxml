@@ -62,17 +62,41 @@
                 <TextField fx:id="searchField" promptText="🔍 Search files..." prefWidth="220"/>
             </HBox>
 
-            <!-- File Table -->
-            <TableView fx:id="fileTable" VBox.vgrow="ALWAYS">
-                <columns>
-                    <TableColumn fx:id="nameCol" text="Filename" prefWidth="250"/>
-                    <TableColumn fx:id="sizeCol" text="Size" prefWidth="120"/>
-                    <TableColumn fx:id="replicasCol" text="Replicas" prefWidth="100"/>
-                    <TableColumn fx:id="statusCol" text="Status" prefWidth="140"/>
-                    <TableColumn fx:id="ownerCol" text="Owner" prefWidth="140"/>
-                    <TableColumn fx:id="checksumCol" text="Checksum" prefWidth="150"/>
-                </columns>
-            </TableView>
+            <!-- File Table wrapped with Drag & Drop overlay -->
+            <StackPane VBox.vgrow="ALWAYS">
+                <TableView fx:id="fileTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="nameCol" text="Filename" prefWidth="250"/>
+                        <TableColumn fx:id="sizeCol" text="Size" prefWidth="120"/>
+                        <TableColumn fx:id="replicasCol" text="Replicas" prefWidth="100"/>
+                        <TableColumn fx:id="statusCol" text="Status" prefWidth="140"/>
+                        <TableColumn fx:id="ownerCol" text="Owner" prefWidth="140"/>
+                        <TableColumn fx:id="checksumCol" text="Checksum" prefWidth="150"/>
+                    </columns>
+                    <placeholder>
+                        <VBox alignment="CENTER" spacing="12">
+                            <Label text="📂 No files yet" style="-fx-font-size: 16px; -fx-text-fill: #8b949e;"/>
+                            <Label text="Drag and drop files here to upload" style="-fx-font-size: 13px; -fx-text-fill: #58a6ff;"/>
+                        </VBox>
+                    </placeholder>
+                </TableView>
+
+                <!-- Drop-zone hint label — shown on drag-over via setVisible() in controller -->
+                <Label fx:id="dropZoneLabel"
+                       text="⬆  Drop files to upload"
+                       visible="false"
+                       mouseTransparent="true"
+                       style="-fx-font-size: 22px; -fx-font-weight: bold;
+                              -fx-text-fill: #3fb950;
+                              -fx-background-color: rgba(31,111,235,0.15);
+                              -fx-background-radius: 12;
+                              -fx-padding: 30 60 30 60;
+                              -fx-border-color: #3fb950;
+                              -fx-border-radius: 12;
+                              -fx-border-width: 2;
+                              -fx-border-style: dashed;"/>
+            </StackPane>
         </VBox>
     </center>
 </BorderPane>
+

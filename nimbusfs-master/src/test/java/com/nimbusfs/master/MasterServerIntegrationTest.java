@@ -80,10 +80,12 @@ public class MasterServerIntegrationTest {
     @Test
     @Order(3)
     void testRegisterNewUser() throws Exception {
+        // Use a timestamp suffix to avoid conflicts with persisted DB from prior runs
+        String uniqueUser = "testuser_" + System.currentTimeMillis();
         try (Socket socket = new Socket("localhost", PORT)) {
             socket.setSoTimeout(5000);
             Packet req = Packet.of(MessageType.REGISTER_REQUEST,
-                Map.of("username", "testuser", "password", "test1234"));
+                Map.of("username", uniqueUser, "password", "test1234"));
             req.writeTo(socket.getOutputStream());
 
             Packet resp = Packet.readFrom(socket.getInputStream());
@@ -91,7 +93,7 @@ public class MasterServerIntegrationTest {
 
             Map<?, ?> body = resp.getPayloadAs(Map.class);
             assertTrue((Boolean) body.get("success"));
-            assertEquals("testuser", body.get("username"));
+            assertEquals(uniqueUser, body.get("username"));
         }
     }
 

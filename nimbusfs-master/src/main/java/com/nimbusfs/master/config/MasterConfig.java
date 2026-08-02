@@ -20,6 +20,7 @@ public class MasterConfig {
     private final int    heartbeatIntervalSeconds;
     private final int    heartbeatTimeoutSeconds;
     private final int    maxUploadSizeMB;
+    private final boolean tlsEnabled;
 
     public MasterConfig() {
         this.loader = new ConfigLoader("master.properties");
@@ -30,6 +31,7 @@ public class MasterConfig {
         this.heartbeatIntervalSeconds = loader.getInt("master.heartbeat.interval.seconds", 5);
         this.heartbeatTimeoutSeconds  = loader.getInt("master.heartbeat.timeout.seconds", 15);
         this.maxUploadSizeMB          = loader.getInt("master.max.upload.size.mb", 10240);  // 10 GB
+        this.tlsEnabled               = loader.getBoolean("master.tls.enabled", false);
 
         // Default database in user home directory
         String defaultDb = Paths.get(System.getProperty("user.home"), ".nimbusfs", "metadata.db").toString();
@@ -45,4 +47,5 @@ public class MasterConfig {
     public int    getHeartbeatTimeoutSeconds()  { return heartbeatTimeoutSeconds; }
     public int    getMaxUploadSizeMB()          { return maxUploadSizeMB; }
     public long   getMaxUploadSizeBytes()       { return (long) maxUploadSizeMB * 1024 * 1024; }
+    public boolean isTlsEnabled()               { return tlsEnabled; }
 }

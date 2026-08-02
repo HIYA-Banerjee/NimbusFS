@@ -11,6 +11,7 @@ public class SettingsController {
 
     @FXML private TextField serverIpField;
     @FXML private TextField serverPortField;
+    @FXML private javafx.scene.control.CheckBox tlsCheck;
     @FXML private ComboBox<String> replicationCombo;
     @FXML private ComboBox<String> themeCombo;
 
@@ -18,6 +19,7 @@ public class SettingsController {
     public void initialize() {
         serverIpField.setText(SessionContext.get().getServerHost());
         serverPortField.setText(String.valueOf(SessionContext.get().getServerPort()));
+        tlsCheck.setSelected(SessionContext.get().isTlsEnabled());
 
         replicationCombo.getItems().addAll("3 Copies (Default)", "2 Copies");
         replicationCombo.getSelectionModel().select(0);
@@ -29,6 +31,7 @@ public class SettingsController {
     @FXML
     private void handleSave() {
         SessionContext.get().setServerHost(serverIpField.getText().trim());
+        SessionContext.get().setTlsEnabled(tlsCheck.isSelected());
         try {
             SessionContext.get().setServerPort(Integer.parseInt(serverPortField.getText().trim()));
         } catch (NumberFormatException ignored) {}

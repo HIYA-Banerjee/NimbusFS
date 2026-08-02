@@ -75,7 +75,7 @@ public class MasterServer {
         metadataStore.initialize();
         authService.ensureAdminExists();
 
-        serverSocket = new ServerSocket(config.getPort());
+        serverSocket = com.nimbusfs.common.net.NimbusSocketFactory.createServerSocket(config.getPort(), config.isTlsEnabled());
         serverSocket.setReuseAddress(true);
         running.set(true);
 

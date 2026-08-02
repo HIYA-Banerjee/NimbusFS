@@ -20,6 +20,7 @@ public class NodeConfig {
     private final String storageDirectory;
     private final long   storageLimitBytes;
     private final String displayName;
+    private final boolean tlsEnabled;
 
     public NodeConfig() {
         this.loader = new ConfigLoader("node.properties");
@@ -34,6 +35,7 @@ public class NodeConfig {
         this.masterHost    = loader.getString("master.host", "localhost");
         this.masterPort    = loader.getInt("master.port", 9000);
         this.displayName   = loader.getString("node.display.name", "");
+        this.tlsEnabled    = loader.getBoolean("node.tls.enabled", false);
 
         String defaultStorage = Paths.get(System.getProperty("user.home"),
             ".nimbusfs", "node-" + chunkPort).toString();
@@ -51,4 +53,5 @@ public class NodeConfig {
     public String getStorageDirectory()  { return storageDirectory; }
     public long   getStorageLimitBytes() { return storageLimitBytes; }
     public String getDisplayName()       { return displayName; }
+    public boolean isTlsEnabled()        { return tlsEnabled; }
 }

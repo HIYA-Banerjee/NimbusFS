@@ -89,7 +89,7 @@ public class FileService {
                     // Send chunk to target nodes
                     List<String> confirmedNodeIds = new ArrayList<>();
                     for (NodeInfo targetNode : assignment.getTargetNodes()) {
-                        try (Socket s = new Socket(targetNode.getHost(), targetNode.getPort())) {
+                        try (Socket s = com.nimbusfs.common.net.NimbusSocketFactory.createClientSocket(targetNode.getHost(), targetNode.getPort(), SessionContext.get().isTlsEnabled())) {
                             Map<String, Object> storeMsg = Map.of(
                                 "chunkId", assignment.getChunkId(),
                                 "data", chunkDataBase64
@@ -196,7 +196,7 @@ public class FileService {
                 NodeInfo target = nodes.stream().filter(n -> n.getNodeId().equals(nodeId) && n.isOnline()).findFirst().orElse(null);
                 if (target == null) continue;
 
-                try (Socket s = new Socket(target.getHost(), target.getPort())) {
+                try (Socket s = com.nimbusfs.common.net.NimbusSocketFactory.createClientSocket(target.getHost(), target.getPort(), SessionContext.get().isTlsEnabled())) {
                     Packet getChunk = Packet.of(MessageType.RETRIEVE_CHUNK, Map.of("chunkId", chunk.getChunkId()));
                     getChunk.writeTo(s.getOutputStream());
 

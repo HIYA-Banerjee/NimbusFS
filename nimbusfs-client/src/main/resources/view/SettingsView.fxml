@@ -19,6 +19,9 @@
 
             <Label text="Master Port:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
             <TextField fx:id="serverPortField" text="9000" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+            <Label text="Transport Security:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+            <CheckBox fx:id="tlsCheck" text="Enable TLS 1.3 Encryption in Transit" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
         </GridPane>
     </VBox>
 

@@ -38,7 +38,7 @@ public class MasterClient {
             String host = SessionContext.get().getServerHost();
             int port = SessionContext.get().getServerPort();
 
-            try (Socket socket = new Socket(host, port)) {
+            try (Socket socket = com.nimbusfs.common.net.NimbusSocketFactory.createClientSocket(host, port, SessionContext.get().isTlsEnabled())) {
                 socket.setSoTimeout(30000);
                 OutputStream out = socket.getOutputStream();
                 InputStream in = socket.getInputStream();
